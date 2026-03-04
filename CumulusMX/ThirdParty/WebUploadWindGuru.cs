@@ -127,7 +127,7 @@ namespace CumulusMX.ThirdParty
 			int numvalues = 0;
 			double totalwind = 0;
 			double maxwind = 0;
-			double minwind = 999;
+			double minwind = double.MaxValue;
 			lock (station.recentwindLock)
 			{
 				for (int i = 0; i < WeatherStation.MaxWindRecent; i++)
@@ -149,8 +149,24 @@ namespace CumulusMX.ThirdParty
 					}
 				}
 			}
-			// average the values
-			double avgwind = totalwind / numvalues;
+
+			double avgwind;
+			if (numvalues > 0)
+			{
+				avgwind = totalwind / numvalues;
+			}
+			else
+			{
+				// No recent wind entries found in the interval window. This commonly
+				// occurs with cloud-connected stations (e.g. Davis WeatherLink Cloud)
+				// where DoWind() is only called every ~4 minutes when the API returns
+				// new data. Fall back to the current wind values which are always
+				// kept up to date by the station driver.
+				cumulus.LogDebugMessage("WindGuru: No WindRecent entries in interval window, using current wind values");
+				avgwind = station.WindAverage;
+				maxwind = station.RecentMaxGust;
+				minwind = avgwind;
+			}
 
 			StringBuilder URL = new StringBuilder("http://www.windguru.cz/upload/api.php?", 1024);
 
